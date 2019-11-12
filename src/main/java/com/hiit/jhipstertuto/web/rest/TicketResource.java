@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -130,5 +131,21 @@ public class TicketResource {
         log.debug("REST request to delete Ticket : {}", id);
         ticketRepository.deleteById(id);
         return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString())).build();
+    }
+
+    @GetMapping("/tickets/self")
+    public ResponseEntity<List<Ticket>> getAllSelfTickets(
+        Pageable pageable,
+        @RequestParam(required = false, defaultValue = "false") boolean eagerload
+    ){
+        log.debug("REST request to get a page of user's Tickets");
+        Page<Ticket> page;
+        if(eagerload) {
+            page = ticketRepository.findAllWithEagerRelationships(pageable);
+        } else {
+            page = new PageImpl<>(ticketRepository.findByAssignedToIsCurrentUser());
+        }
+        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
+        return ResponseEntity.ok().headers(headers).body(page.getContent());
     }
 }
